@@ -2276,7 +2276,7 @@
     {
       "type": "Feature",
       "properties": {
-        "Water": "Bush Creek",
+        "name": "Water - Bush Creek",
         "marker-color": "#1d407e",
         "marker-size": "medium"
       },
@@ -2292,9 +2292,10 @@
     {
       "type": "Feature",
       "properties": {
-        "Skinner Hut": "https://www.huts.org/The_Huts/skinner.php",
+        "name": "Skinner Hut",
         "marker-color": "#7e1a00",
-        "marker-size": "medium"
+        "marker-size": "medium",
+        "link": "https://www.huts.org/The_Huts/skinner.php"
       },
       "geometry": {
         "coordinates": [
