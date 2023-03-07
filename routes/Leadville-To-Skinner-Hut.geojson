@@ -2270,7 +2270,40 @@
             3535.1
           ]
         ]
-      }
+      },
+      "id": 0
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "Water": "Bush Creek",
+        "marker-color": "#1d407e",
+        "marker-size": "medium"
+      },
+      "geometry": {
+        "coordinates": [
+          -106.46907474801068,
+          39.24794263126452
+        ],
+        "type": "Point"
+      },
+      "id": 1
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "Skinner Hut": "https://www.huts.org/The_Huts/skinner.php",
+        "marker-color": "#7e1a00",
+        "marker-size": "medium"
+      },
+      "geometry": {
+        "coordinates": [
+          -106.4625881763928,
+          39.26602418220844
+        ],
+        "type": "Point"
+      },
+      "id": 2
     }
   ]
 }
