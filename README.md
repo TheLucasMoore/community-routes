@@ -4,6 +4,9 @@ This idea was brought up in [a reddit post](https://www.reddit.com/r/bikepacking
 
 This is just a proof of concept right now.
 
+## TO DO
+* Work on PR action
+
 ## Ideas
 
 * Editing with https://geojson.io
