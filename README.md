@@ -6,7 +6,12 @@ This is just a proof of concept right now.
 
 ## Ideas
 
-* https://github.com/mapbox/togeojson
-* https://mapbox.github.io/togeojson/
-* https://github.com/mapbox/leaflet-omnivore
+* Editing with https://geojson.io
+
+* Automatic building on push with
+  * https://github.com/mapbox/togeojson
+  * https://mapbox.github.io/togeojson/
+
+* Other ideas
+  * https://github.com/mapbox/leaflet-omnivore
 
