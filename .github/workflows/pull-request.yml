@@ -7,6 +7,6 @@ jobs:
       - uses: actions/checkout@v2
       - uses: harupy/comment-on-pr@master
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PAT_TIL_JUNE_5 }}
         with:
           filename: template.md
