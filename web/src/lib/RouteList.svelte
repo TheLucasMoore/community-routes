@@ -11,6 +11,39 @@
 			.map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
 			.join(' ');
 	}
+
+	function formatDistance(km) {
+		return km >= 1 ? `${km.toLocaleString()} km` : `${Math.round(km * 1000)} m`;
+	}
+
+	function formatElevation(m) {
+		return `↑ ${m.toLocaleString()} m`;
+	}
+
+	// Build an SVG polyline path from elevationProfile array
+	function buildSparklinePath(profile, width, height) {
+		if (!profile || profile.length < 2) return '';
+		const minEle = Math.min(...profile.map((p) => p.ele));
+		const maxEle = Math.max(...profile.map((p) => p.ele));
+		const maxD = profile[profile.length - 1].d || 1;
+		const eleRange = maxEle - minEle || 1;
+		const pad = 4;
+
+		const points = profile.map((p) => {
+			const x = pad + ((p.d / maxD) * (width - pad * 2));
+			const y = height - pad - ((p.ele - minEle) / eleRange) * (height - pad * 2);
+			return `${x.toFixed(1)},${y.toFixed(1)}`;
+		});
+
+		// Closed area path: go along the profile, then back along the bottom
+		const first = profile[0];
+		const last = profile[profile.length - 1];
+		const x0 = (pad + ((first.d / maxD) * (width - pad * 2))).toFixed(1);
+		const xN = (pad + ((last.d / maxD) * (width - pad * 2))).toFixed(1);
+		const bottom = (height - pad).toFixed(1);
+
+		return `M ${x0},${bottom} L ${points.join(' L ')} L ${xN},${bottom} Z`;
+	}
 </script>
 
 <div class="route-list">
@@ -24,18 +57,48 @@
 	{:else}
 		<ul>
 			{#each routes as route (route.filename)}
+				{@const isSelected = highlightedRoute === route.filename}
 				<li>
 					<button
 						class="route-item"
-						class:active={highlightedRoute === route.filename}
+						class:active={isSelected}
 						onclick={() => selectRoute(route.filename)}
 					>
-						<span class="route-icon">🗺</span>
-						<span class="route-name">{formatName(route.name)}</span>
-						{#if highlightedRoute === route.filename}
-							<span class="route-badge">Selected</span>
+						<div class="route-main">
+							<span class="route-icon">🗺</span>
+							<span class="route-name">{formatName(route.name)}</span>
+						</div>
+						{#if route.distanceKm != null || route.elevationGainM != null}
+							<div class="route-stats">
+								{#if route.distanceKm != null}
+									<span class="stat">{formatDistance(route.distanceKm)}</span>
+								{/if}
+								{#if route.elevationGainM != null && route.elevationGainM > 0}
+									<span class="stat">{formatElevation(route.elevationGainM)}</span>
+								{/if}
+							</div>
 						{/if}
 					</button>
+
+					{#if isSelected && route.elevationProfile && route.elevationProfile.length > 1}
+						<div class="elevation-chart">
+							<svg width="100%" viewBox="0 0 260 80" preserveAspectRatio="none">
+								<path
+									d={buildSparklinePath(route.elevationProfile, 260, 80)}
+									fill="#ff6b00"
+									fill-opacity="0.25"
+									stroke="#ff6b00"
+									stroke-width="1.5"
+									stroke-linejoin="round"
+								/>
+							</svg>
+							<div class="chart-labels">
+								<span>0 km</span>
+								<span>Elevation profile</span>
+								<span>{route.distanceKm} km</span>
+							</div>
+						</div>
+					{/if}
 				</li>
 			{/each}
 		</ul>
@@ -56,6 +119,7 @@
 		gap: 8px;
 		padding: 16px 16px 8px;
 		border-bottom: 1px solid #e5e7eb;
+		flex-shrink: 0;
 	}
 
 	.route-list-header h2 {
@@ -85,8 +149,8 @@
 
 	.route-item {
 		display: flex;
-		align-items: center;
-		gap: 10px;
+		flex-direction: column;
+		gap: 4px;
 		width: 100%;
 		padding: 10px 12px;
 		border: none;
@@ -104,8 +168,14 @@
 	}
 
 	.route-item.active {
-		background: #eff6ff;
-		color: #1d4ed8;
+		background: #fff7ed;
+		color: #c2410c;
+	}
+
+	.route-main {
+		display: flex;
+		align-items: center;
+		gap: 10px;
 	}
 
 	.route-icon {
@@ -119,20 +189,38 @@
 		line-height: 1.3;
 	}
 
-	.route-badge {
-		font-size: 0.7rem;
-		background: #dbeafe;
-		color: #1d4ed8;
-		padding: 2px 6px;
-		border-radius: 9999px;
-		font-weight: 500;
-		flex-shrink: 0;
+	.route-stats {
+		display: flex;
+		gap: 10px;
+		padding-left: 26px;
 	}
 
-	.empty-state {
-		padding: 16px;
-		color: #9ca3af;
-		font-size: 0.9rem;
-		text-align: center;
+	.stat {
+		font-size: 0.78rem;
+		color: #6b7280;
+	}
+
+	.route-item.active .stat {
+		color: #9a3412;
+	}
+
+	.elevation-chart {
+		padding: 0 8px 10px;
+	}
+
+	.elevation-chart svg {
+		display: block;
+		width: 100%;
+		height: 80px;
+		border-radius: 4px;
+		background: #fff7ed;
+	}
+
+	.chart-labels {
+		display: flex;
+		justify-content: space-between;
+		font-size: 0.68rem;
+		color: #9a3412;
+		padding: 2px 2px 0;
 	}
 </style>
