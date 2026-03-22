@@ -1,8 +1,18 @@
 <script>
-	let { routes = [], highlightedRoute = $bindable(null) } = $props();
+	let { routes = [], highlightedRoute = $bindable(null), editingRoute = $bindable(null) } = $props();
 
 	function selectRoute(filename) {
+		if (editingRoute) return; // don't switch routes while editing
 		highlightedRoute = highlightedRoute === filename ? null : filename;
+	}
+
+	function startEditing(filename) {
+		highlightedRoute = filename;
+		editingRoute = filename;
+	}
+
+	function stopEditing() {
+		editingRoute = null;
 	}
 
 	function formatName(name) {
@@ -59,26 +69,37 @@
 			{#each routes as route (route.filename)}
 				{@const isSelected = highlightedRoute === route.filename}
 				<li>
-					<button
-						class="route-item"
-						class:active={isSelected}
-						onclick={() => selectRoute(route.filename)}
-					>
-						<div class="route-main">
-							<span class="route-icon">🗺</span>
-							<span class="route-name">{formatName(route.name)}</span>
-						</div>
-						{#if route.distanceKm != null || route.elevationGainM != null}
-							<div class="route-stats">
-								{#if route.distanceKm != null}
-									<span class="stat">{formatDistance(route.distanceKm)}</span>
-								{/if}
-								{#if route.elevationGainM != null && route.elevationGainM > 0}
-									<span class="stat">{formatElevation(route.elevationGainM)}</span>
-								{/if}
+					<div class="route-item-row">
+						<button
+							class="route-item"
+							class:active={isSelected}
+							class:editing={editingRoute === route.filename}
+							onclick={() => selectRoute(route.filename)}
+						>
+							<div class="route-main">
+								<span class="route-icon">🗺</span>
+								<span class="route-name">{formatName(route.name)}</span>
 							</div>
+							{#if route.distanceKm != null || route.elevationGainM != null}
+								<div class="route-stats">
+									{#if route.distanceKm != null}
+										<span class="stat">{formatDistance(route.distanceKm)}</span>
+									{/if}
+									{#if route.elevationGainM != null && route.elevationGainM > 0}
+										<span class="stat">{formatElevation(route.elevationGainM)}</span>
+									{/if}
+								</div>
+							{/if}
+						</button>
+
+						{#if isSelected && editingRoute !== route.filename}
+							<button class="edit-btn" onclick={() => startEditing(route.filename)} title="Edit route">
+								✏️
+							</button>
+						{:else if editingRoute === route.filename}
+							<button class="edit-btn cancel" onclick={stopEditing} title="Stop editing">✕</button>
 						{/if}
-					</button>
+					</div>
 
 					{#if isSelected && route.elevationProfile && route.elevationProfile.length > 1}
 						<div class="elevation-chart">
@@ -147,11 +168,40 @@
 		padding: 0 8px;
 	}
 
+	.route-item-row {
+		display: flex;
+		align-items: flex-start;
+		gap: 4px;
+	}
+
+	.edit-btn {
+		flex-shrink: 0;
+		margin-top: 8px;
+		padding: 6px 8px;
+		border: none;
+		border-radius: 5px;
+		background: none;
+		cursor: pointer;
+		font-size: 0.85rem;
+		color: #6b7280;
+		transition: background 0.15s;
+	}
+
+	.edit-btn:hover {
+		background: #f3f4f6;
+	}
+
+	.edit-btn.cancel {
+		color: #9a3412;
+		font-weight: 600;
+	}
+
 	.route-item {
 		display: flex;
 		flex-direction: column;
 		gap: 4px;
-		width: 100%;
+		flex: 1;
+		min-width: 0;
 		padding: 10px 12px;
 		border: none;
 		border-radius: 6px;

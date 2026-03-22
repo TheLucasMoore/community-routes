@@ -1,0 +1,19 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Skinner Hut",
+        "type": "hut",
+        "elevation_m": 3535,
+        "description": "10th Mountain Division Hut Association. Sleeps 16, open year-round.",
+        "url": "https://www.huts.org/the_huts/skinner.php"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-106.46257, 39.26581, 3535.1]
+      }
+    }
+  ]
+}

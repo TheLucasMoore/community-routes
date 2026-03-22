@@ -70,7 +70,7 @@ export async function GET() {
 
 	try {
 		const files = await readdir(routesDir);
-		const geojsonFiles = files.filter((f) => f.endsWith('.geojson'));
+		const geojsonFiles = files.filter((f) => f.endsWith('.geojson') && f !== 'pois.geojson');
 
 		routes = await Promise.all(
 			geojsonFiles.map(async (filename) => {

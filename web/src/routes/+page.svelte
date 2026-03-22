@@ -4,15 +4,20 @@
 	import Map from '$lib/Map.svelte';
 
 	let routes = $state([]);
+	let pois = $state([]);
 	let highlightedRoute = $state(null);
+	let editingRoute = $state(null);
 	let loading = $state(true);
 	let error = $state(null);
 
 	onMount(async () => {
 		try {
-			const res = await fetch('/api/routes');
-			if (!res.ok) throw new Error(`HTTP ${res.status}`);
-			routes = await res.json();
+			const [routesRes, poisRes] = await Promise.all([
+				fetch('/api/routes'),
+				fetch('/api/pois')
+			]);
+			if (!routesRes.ok) throw new Error(`HTTP ${routesRes.status}`);
+			[routes, pois] = await Promise.all([routesRes.json(), poisRes.json()]);
 		} catch (err) {
 			console.error('Failed to load routes:', err);
 			error = err.message;
@@ -29,12 +34,19 @@
 		{:else if error}
 			<div class="sidebar-error">Error: {error}</div>
 		{:else}
-			<RouteList {routes} bind:highlightedRoute />
+			<RouteList {routes} bind:highlightedRoute bind:editingRoute />
 		{/if}
 	</aside>
 
 	<main class="map-area">
-		<Map {routes} {highlightedRoute} />
+		<Map
+			{routes}
+			{pois}
+			{highlightedRoute}
+			{editingRoute}
+			oneditdone={() => (editingRoute = null)}
+			onpoiadded={(f) => (pois = [...pois, f])}
+		/>
 	</main>
 </div>
 
