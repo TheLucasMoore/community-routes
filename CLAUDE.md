@@ -57,3 +57,4 @@ Early proof-of-concept. The automation is minimal and the GPX→GeoJSON conversi
 - Auto-convert GPX to GeoJSON in CI
 - Build a web UI with [Leaflet](https://leafletjs.com/) + [leaflet-omnivore](https://github.com/mapbox/leaflet-omnivore)
 - Add route metadata (difficulty, distance, elevation profile)
+

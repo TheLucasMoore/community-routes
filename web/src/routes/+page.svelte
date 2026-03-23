@@ -7,6 +7,7 @@
 	let pois = $state([]);
 	let highlightedRoute = $state(null);
 	let editingRoute = $state(null);
+	let editMode = $state(false);
 	let loading = $state(true);
 	let error = $state(null);
 
@@ -34,7 +35,7 @@
 		{:else if error}
 			<div class="sidebar-error">Error: {error}</div>
 		{:else}
-			<RouteList {routes} bind:highlightedRoute bind:editingRoute />
+			<RouteList {routes} bind:highlightedRoute bind:editingRoute bind:editMode />
 		{/if}
 	</aside>
 
@@ -43,8 +44,8 @@
 			{routes}
 			{pois}
 			{highlightedRoute}
-			{editingRoute}
-			oneditdone={() => (editingRoute = null)}
+			bind:editingRoute
+			bind:editMode
 			onpoiadded={(f) => (pois = [...pois, f])}
 		/>
 	</main>

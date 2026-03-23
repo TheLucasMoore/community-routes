@@ -1,12 +1,13 @@
 <script>
 	import { onMount, onDestroy } from 'svelte';
+	import { geojsonToGpx } from '$lib/gpxExport.js';
 
 	let {
 		routes = [],
 		pois = [],
 		highlightedRoute = null,
-		editingRoute = null,
-		oneditdone = () => {},
+		editingRoute = $bindable(null),
+		editMode = $bindable(false),
 		onpoiadded = () => {}
 	} = $props();
 
@@ -146,21 +147,41 @@
 		draw = newDraw;
 	}
 
-	function exitEditMode() {
+	function exitRouteEditMode() {
 		if (draw) {
 			map.removeControl(draw);
 			draw = null;
 		}
 	}
 
+	function exitAllEditing() {
+		editMode = false;
+		editingRoute = null;
+		cancelAddPoi();
+		exitRouteEditMode();
+	}
+
 	function exportGeoJSON() {
 		if (!draw) return;
 		const data = draw.getAll();
 		const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+		triggerDownload(blob, editingRoute || 'route.geojson');
+	}
+
+	function exportGPX() {
+		if (!draw) return;
+		const data = draw.getAll();
+		const name = (editingRoute || 'route').replace('.geojson', '');
+		const gpx = geojsonToGpx(data, name);
+		const blob = new Blob([gpx], { type: 'application/gpx+xml' });
+		triggerDownload(blob, `${name}.gpx`);
+	}
+
+	function triggerDownload(blob, filename) {
 		const url = URL.createObjectURL(blob);
 		const a = document.createElement('a');
 		a.href = url;
-		a.download = editingRoute || 'route.geojson';
+		a.download = filename;
 		a.click();
 		URL.revokeObjectURL(url);
 	}
@@ -197,7 +218,6 @@
 	function addPoisToMap() {
 		if (!map || !maplibre) return;
 
-		// Remove previous markers
 		poiMarkers.forEach((m) => m.remove());
 		poiMarkers = [];
 
@@ -312,9 +332,17 @@
 	}
 
 	$effect(() => {
-		const icon = poiIcon(poiForm.type); // read type unconditionally so it's always tracked
+		const icon = poiIcon(poiForm.type);
 		if (pendingPopup) {
 			pendingPopup.setHTML(`<span class="pending-pin-popup">${icon}</span>`);
+		}
+	});
+
+	// When edit mode is turned off externally, clean up
+	$effect(() => {
+		if (!editMode) {
+			cancelAddPoi();
+			exitRouteEditMode();
 		}
 	});
 
@@ -371,36 +399,64 @@
 		if (route) {
 			enterEditMode(route);
 		} else {
-			exitEditMode();
+			exitRouteEditMode();
 		}
 	});
 </script>
 
-<div class="map-wrapper" class:crosshair={addPoiMode && !pendingCoords}>
+<div class="map-wrapper" class:crosshair={editMode && addPoiMode && !pendingCoords}>
 	<div class="map-container" bind:this={mapContainer}></div>
 
-	{#if !draw}
-		<button
-			class="add-poi-btn"
-			class:active={addPoiMode || pendingCoords}
-			onclick={toggleAddPoiMode}
-			title={addPoiMode ? 'Cancel' : 'Add a point of interest'}
-		>
-			{addPoiMode || pendingCoords ? '✕ Cancel' : '＋ Add POI'}
+	<!-- Entry button: only visible in view mode -->
+	{#if !editMode}
+		<button class="edit-entry-btn" onclick={() => (editMode = true)} title="Enter edit mode">
+			✏️ Edit
 		</button>
 	{/if}
 
-	{#if addPoiMode && !pendingCoords}
+	<!-- Unified edit toolbar: visible in edit mode -->
+	{#if editMode}
+		<div class="edit-toolbar">
+			<span class="toolbar-label">Edit Mode</span>
+
+			<div class="toolbar-tools">
+				<button
+					class="toolbar-btn"
+					class:active={addPoiMode || !!pendingCoords}
+					onclick={toggleAddPoiMode}
+				>
+					{addPoiMode || pendingCoords ? '✕ Cancel POI' : '＋ Add POI'}
+				</button>
+
+				{#if highlightedRoute && !draw && !addPoiMode}
+					<button class="toolbar-btn" onclick={() => (editingRoute = highlightedRoute)}>
+						🗺 Edit Route
+					</button>
+				{/if}
+
+				{#if draw}
+					<button class="toolbar-btn" onclick={exportGeoJSON}>⬇ GeoJSON</button>
+					<button class="toolbar-btn" onclick={exportGPX}>⬇ GPX</button>
+				{/if}
+			</div>
+
+			<button class="toolbar-btn toolbar-done" onclick={exitAllEditing}>✕ Done</button>
+		</div>
+	{/if}
+
+	<!-- POI placement hint -->
+	{#if editMode && addPoiMode && !pendingCoords}
 		<div class="map-hint">Click the map to place a pin</div>
 	{/if}
 
+	<!-- POI form panel -->
 	{#if pendingCoords}
 		<div class="poi-form-panel">
 			<h3>New Point of Interest</h3>
 			<div class="form-row">
 				<label>
 					Name <span class="required">*</span>
-					<input bind:value={poiForm.name} placeholder="e.g. Skinner Hut" autofocus />
+					<input bind:value={poiForm.name} placeholder="e.g. Skinner Hut" />
 				</label>
 			</div>
 			<div class="form-row">
@@ -438,14 +494,6 @@
 			</div>
 		</div>
 	{/if}
-
-	{#if draw}
-		<div class="edit-toolbar">
-			<span class="edit-label">Edit mode</span>
-			<button class="toolbar-btn" onclick={exportGeoJSON}>⬇ Export GeoJSON</button>
-			<button class="toolbar-btn done" onclick={oneditdone}>✕ Done</button>
-		</div>
-	{/if}
 </div>
 
 <style>
@@ -464,11 +512,12 @@
 		cursor: crosshair !important;
 	}
 
-	.add-poi-btn {
+	/* Entry button — bottom right, view mode only */
+	.edit-entry-btn {
 		position: absolute;
-		top: 10px;
-		left: 10px;
-		padding: 7px 13px;
+		bottom: 32px;
+		right: 10px;
+		padding: 7px 14px;
 		background: #ffffff;
 		border: 1px solid #d1d5db;
 		border-radius: 6px;
@@ -480,28 +529,83 @@
 		transition: background 0.15s, border-color 0.15s;
 	}
 
-	.add-poi-btn:hover {
+	.edit-entry-btn:hover {
 		background: #f9fafb;
 		border-color: #9ca3af;
 	}
 
-	.add-poi-btn.active {
-		background: #fff0e6;
+	/* Unified edit toolbar — top of map */
+	.edit-toolbar {
+		position: absolute;
+		top: 10px;
+		left: 50%;
+		transform: translateX(-50%);
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		background: #1f2937;
+		color: #f9fafb;
+		padding: 7px 10px;
+		border-radius: 8px;
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+		font-size: 0.82rem;
+		z-index: 10;
+		white-space: nowrap;
+	}
+
+	.toolbar-label {
+		font-weight: 600;
+		color: #ff6b00;
+		padding-right: 6px;
+		border-right: 1px solid #374151;
+		margin-right: 2px;
+	}
+
+	.toolbar-tools {
+		display: flex;
+		gap: 5px;
+	}
+
+	.toolbar-btn {
+		padding: 5px 11px;
+		border: 1px solid #4b5563;
+		border-radius: 5px;
+		background: #374151;
+		color: #f9fafb;
+		cursor: pointer;
+		font-size: 0.8rem;
+		transition: background 0.15s;
+	}
+
+	.toolbar-btn:hover {
+		background: #4b5563;
+	}
+
+	.toolbar-btn.active {
+		background: #7c2d12;
 		border-color: #ff6b00;
-		color: #c2410c;
+		color: #fed7aa;
+	}
+
+	.toolbar-done {
+		border-color: #6b7280;
+		color: #d1d5db;
+		margin-left: 4px;
 	}
 
 	.map-hint {
 		position: absolute;
-		top: 46px;
-		left: 10px;
+		top: 54px;
+		left: 50%;
+		transform: translateX(-50%);
 		background: rgba(0, 0, 0, 0.7);
 		color: #fff;
 		font-size: 0.78rem;
-		padding: 5px 10px;
+		padding: 5px 12px;
 		border-radius: 5px;
 		pointer-events: none;
 		z-index: 10;
+		white-space: nowrap;
 	}
 
 	.poi-form-panel {
@@ -671,48 +775,5 @@
 
 	:global(.poi-popup a:hover) {
 		text-decoration: underline;
-	}
-
-	.edit-toolbar {
-		position: absolute;
-		bottom: 32px;
-		left: 50%;
-		transform: translateX(-50%);
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		background: #1f2937;
-		color: #f9fafb;
-		padding: 8px 12px;
-		border-radius: 8px;
-		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-		font-size: 0.85rem;
-		z-index: 10;
-	}
-
-	.edit-label {
-		font-weight: 500;
-		color: #ff6b00;
-		margin-right: 4px;
-	}
-
-	.toolbar-btn {
-		padding: 5px 12px;
-		border: 1px solid #4b5563;
-		border-radius: 5px;
-		background: #374151;
-		color: #f9fafb;
-		cursor: pointer;
-		font-size: 0.82rem;
-		transition: background 0.15s;
-	}
-
-	.toolbar-btn:hover {
-		background: #4b5563;
-	}
-
-	.toolbar-btn.done {
-		border-color: #6b7280;
-		color: #d1d5db;
 	}
 </style>

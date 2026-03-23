@@ -1,5 +1,5 @@
 <script>
-	let { routes = [], highlightedRoute = $bindable(null), editingRoute = $bindable(null) } = $props();
+	let { routes = [], highlightedRoute = $bindable(null), editingRoute = $bindable(null), editMode = $bindable(false) } = $props();
 
 	function selectRoute(filename) {
 		if (editingRoute) return; // don't switch routes while editing
@@ -9,10 +9,7 @@
 	function startEditing(filename) {
 		highlightedRoute = filename;
 		editingRoute = filename;
-	}
-
-	function stopEditing() {
-		editingRoute = null;
+		editMode = true;
 	}
 
 	function formatName(name) {
@@ -96,8 +93,6 @@
 							<button class="edit-btn" onclick={() => startEditing(route.filename)} title="Edit route">
 								✏️
 							</button>
-						{:else if editingRoute === route.filename}
-							<button class="edit-btn cancel" onclick={stopEditing} title="Stop editing">✕</button>
 						{/if}
 					</div>
 
@@ -189,11 +184,6 @@
 
 	.edit-btn:hover {
 		background: #f3f4f6;
-	}
-
-	.edit-btn.cancel {
-		color: #9a3412;
-		font-weight: 600;
 	}
 
 	.route-item {
