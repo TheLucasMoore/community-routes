@@ -34,26 +34,35 @@ jobs:
 
             if (changed.length === 0) return;
 
-            const encode = s => encodeURIComponent(s);
-            const renderUrl = (sha, file) => {
-              const raw = `https://raw.githubusercontent.com/${owner}/${repo}/${sha}/${file}`;
-              return `https://render.githubusercontent.com/view/geojson?url=${encode(raw)}`;
+            const getContent = (sha, file) => {
+              try {
+                return execSync(`git show ${sha}:${file}`).toString().trim();
+              } catch {
+                return null;
+              }
             };
 
-            const sections = changed.map(file => [
-              `### \`${file}\``,
-              `| Before | After |`,
-              `|--------|-------|`,
-              `| [View map](${renderUrl(base, file)}) | [View map](${renderUrl(head, file)}) |`,
-            ].join('\n'));
+            const sections = changed.map(file => {
+              const baseContent = getContent(base, file);
+              const headContent = getContent(head, file);
+              const parts = [`### \`${file}\``];
 
-            const body = [
-              '## Map Preview',
-              '',
-              ...sections,
-              '',
-              '<sub>Maps rendered by GitHub\'s built-in GeoJSON viewer</sub>',
-            ].join('\n');
+              if (baseContent) {
+                parts.push('**Current**');
+                parts.push('```geojson');
+                parts.push(baseContent);
+                parts.push('```');
+              }
+
+              parts.push('**Proposed**');
+              parts.push('```geojson');
+              parts.push(headContent);
+              parts.push('```');
+
+              return parts.join('\n');
+            });
+
+            const body = `## Map Preview\n\n${sections.join('\n\n')}`;
 
             const comments = await github.rest.issues.listComments({
               owner, repo, issue_number: context.issue.number,
