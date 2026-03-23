@@ -1,0 +1,71 @@
+name: Map Preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'routes/**.geojson'
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Post map preview comment
+        uses: actions/github-script@v7
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        with:
+          script: |
+            const { execSync } = require('child_process');
+            const { owner, repo } = context.repo;
+            const base = process.env.BASE_SHA;
+            const head = process.env.HEAD_SHA;
+
+            const changed = execSync(
+              `git diff --name-only ${base} ${head} -- '*.geojson'`
+            ).toString().trim().split('\n').filter(Boolean);
+
+            if (changed.length === 0) return;
+
+            const encode = s => encodeURIComponent(s);
+            const renderUrl = (sha, file) => {
+              const raw = `https://raw.githubusercontent.com/${owner}/${repo}/${sha}/${file}`;
+              return `https://render.githubusercontent.com/view/geojson?url=${encode(raw)}`;
+            };
+
+            const sections = changed.map(file => [
+              `### \`${file}\``,
+              `| Before | After |`,
+              `|--------|-------|`,
+              `| [View map](${renderUrl(base, file)}) | [View map](${renderUrl(head, file)}) |`,
+            ].join('\n'));
+
+            const body = [
+              '## Map Preview',
+              '',
+              ...sections,
+              '',
+              '<sub>Maps rendered by GitHub\'s built-in GeoJSON viewer</sub>',
+            ].join('\n');
+
+            const comments = await github.rest.issues.listComments({
+              owner, repo, issue_number: context.issue.number,
+            });
+            const existing = comments.data.find(c => c.body.startsWith('## Map Preview'));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner, repo, comment_id: existing.id, body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner, repo, issue_number: context.issue.number, body,
+              });
+            }
